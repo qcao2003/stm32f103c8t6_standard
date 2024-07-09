@@ -1,0 +1,449 @@
+C51 COMPILER V9.52.0.0   MAIN                                                              09/18/2016 19:33:14 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN main.obj
+COMPILER INVOKED BY: D:\keil 5 MDK\C51\BIN\C51.EXE source\main.c LARGE BROWSE DEBUG OBJECTEXTEND PRINT(.\main.lst) TABS(
+                    -2) OBJECT(main.obj)
+
+line level    source
+
+   1          
+   2          #include "main.h"
+   3          
+   4          long x, y;             //屏幕坐标x(0-175), y(0-219)
+   5          uchar scorceValue[5] = {0, 0, 0, 0, 0}; //成绩变量
+   6          
+   7          uchar where, page = 1;  
+   8          bit f_startGame;       //开始游戏标志位
+   9          bit f_gameWait;        //游戏暂停标志位
+  10          
+  11          #define N 50           //蛇的最大长度(N - 1)
+  12          const uchar H = 108;   //地图的高  
+  13          const uchar L = 174;   //地图的长  
+  14          
+  15          struct Food         /*食物数据*/
+  16          {
+  17             uchar fx;         /*食物的横坐标*/
+  18             uchar fy;         /*食物的纵坐标*/
+  19             uchar yes;        /*判断是否要出现食物的变量(1为需要生成食物)*/
+  20          }food;     
+  21          
+  22          struct Snake        /*蛇每个节点的数据*/
+  23          {
+  24             uchar sx;         /*蛇的坐标*/
+  25             uchar sy;
+  26             int   direction;  /*蛇移动方向1,2,3,4表示右,左,上,下四个方向*/
+  27          }Snake[N];
+  28          
+  29          uchar SnakeNode;     /*蛇的长度(<= N - 1)*/
+  30          
+  31          
+  32          /****************************************************************************
+  33          *函数名：main
+  34          *输  入：无
+  35          *输  出：无
+  36          *功  能：主函数
+  37          ****************************************************************************/
+  38          
+  39          void main()
+  40          {
+  41   1        uchar rst = 0;
+  42   1      
+  43   1        Uart_init();
+  44   1        TFT_Init();
+  45   1        //-- 触摸校正，默认使用开机不校正，如果触摸对对可以改正，该函数里面的校正点 --//
+  46   1        //-- 修改LCD_TOUCH_TYPE来改变校正模式，定义在touch.h的45行 --//
+  47   1        TOUCH_Adjust();
+  48   1        rst = 1;
+  49   1      
+  50   1        while(1)
+  51   1        {
+  52   2          if(rst == 1)
+  53   2          { 
+  54   3            SnakeDis();  
+C51 COMPILER V9.52.0.0   MAIN                                                              09/18/2016 19:33:14 PAGE 2   
+
+  55   3            rst = 0;
+  56   3          }
+  57   2      
+  58   2            
+  59   2            if(TOUCH_XPT_ReadXY() == 1)
+  60   2            {
+  61   3              //--如果触摸跟显示发生偏移，可以根据显示AD值--//
+  62   3              //--调整下面公式里面的数值--//
+  63   3                    x = (xpt_xy.x * TouchAdj.xFactor / LCD_ADJ_MUX + TouchAdj.xOffset);
+  64   3                    y = (xpt_xy.y * TouchAdj.yFactor / LCD_ADJ_MUX + TouchAdj.yOffset);
+  65   3            
+  66   3              if (x > 175 )
+  67   3              {
+  68   4                x = 175;
+  69   4              }
+  70   3              
+  71   3              if (y > 219)
+  72   3              {
+  73   4                y = 219;
+  74   4              }     
+  75   3            
+  76   3              if ((x > 150) && (y < 29))  //屏幕刷新
+  77   3              {
+  78   4                rst = 1;
+  79   4              }
+  80   3              else
+  81   3              {
+  82   4                //GUI_Dot((uint)x , (uint)y, BLUE);  
+  83   4                
+  84   4                #if 1
+  85   4                SendString("Now x zoubiao: ");
+  86   4                SendData(x / 100 + 0x30);
+  87   4                SendData(x / 10 % 10 + 0x30);
+  88   4                SendData(x % 10 + 0x30);
+  89   4                SendString("\r\n");
+  90   4                
+  91   4                SendString("Now y zoubiao: ");
+  92   4                SendData(y / 100 + 0x30);
+  93   4                SendData(y / 10 % 10 + 0x30);
+  94   4                SendData(y % 10 + 0x30);
+  95   4                SendString("\r\n");
+  96   4                #endif
+  97   4      
+  98   4              }
+  99   3      
+ 100   3              if((x >= 45 && x <= 128) && (y >= 140 && y <= 164)) //start 识别区
+ 101   3              {
+ 102   4                if(page == 1)
+ 103   4                  where = 1; 
+ 104   4              }
+ 105   3      
+ 106   3              if((x >= 45 && x <= 128) && (y >= 170 && y <= 194)) //about 识别区
+ 107   3              {
+ 108   4                if(page == 1)
+ 109   4                  where = 2;
+ 110   4              }
+ 111   3      
+ 112   3              if(x <= 29 && y >= 190) //back 此按钮为隐藏屏幕左下角30*30 识别区
+ 113   3              {
+ 114   4                if(page == 3)
+ 115   4                  where = 3; 
+ 116   4                
+C51 COMPILER V9.52.0.0   MAIN                                                              09/18/2016 19:33:14 PAGE 3   
+
+ 117   4                if(page == 2)
+ 118   4                  where = 3;
+ 119   4                  f_startGame = 0;  //退出游戏识别区
+ 120   4              }
+ 121   3      
+ 122   3              if(x <= 88 && (y >= 55 && y <= 110))  //游戏暂停识别区
+ 123   3              {
+ 124   4                if(page == 2)
+ 125   4                  where = 8;
+ 126   4              }
+ 127   3      
+ 128   3              GameButton();  //游戏控制按钮识别区
+ 129   3            }
+ 130   2      
+ 131   2      
+ 132   2            if(f_startGame && (~f_gameWait)) //开始游戏
+ 133   2            {
+ 134   3              GamePlay();
+ 135   3            }
+ 136   2            
+ 137   2            
+ 138   2            switch(where)   //点了哪里，要做森么。
+ 139   2            {
+ 140   3              case 1:  //点击start
+ 141   3                  SendString("you touch start button\r\n");
+ 142   3                  GameDis();
+ 143   3      
+ 144   3                  /*游戏初始化*/
+ 145   3                  f_startGame = 1;  
+ 146   3                  food.yes = 1;  /*1表示需要出现新食物,0表示已经存在食物*/ 
+ 147   3                  SnakeNode = 3;
+ 148   3                  Snake[0].direction = 1;  /*蛇头方向往右*/ 
+ 149   3                  
+ 150   3                  Snake[0].sx = 141; Snake[0].sy = 164;   /*初始蛇的body */
+ 151   3                  Snake[1].sx = 140; Snake[1].sy = 164;
+ 152   3                  Snake[2].sx = 139; Snake[2].sy = 164;
+ 153   3      
+ 154   3                  page = 2;
+ 155   3                break;
+ 156   3                
+ 157   3              case 2: //点击about
+ 158   3                  SendString("you touch about button\r\n");
+ 159   3                  AboutDis();
+ 160   3                  page = 3;
+ 161   3                break;
+ 162   3                
+ 163   3              case 3: //点击back
+ 164   3                  SendString("you touch back button\r\n");
+ 165   3                  SnakeDis();
+ 166   3                  page = 1;
+ 167   3                break;
+ 168   3      
+ 169   3              case 4: //up
+ 170   3                SendString("up\r\n");
+ 171   3                Snake[0].direction = 3;
+ 172   3                break;
+ 173   3      
+ 174   3              case 5: //down
+ 175   3                SendString("down\r\n");
+ 176   3                Snake[0].direction = 4;
+ 177   3                break;
+ 178   3      
+C51 COMPILER V9.52.0.0   MAIN                                                              09/18/2016 19:33:14 PAGE 4   
+
+ 179   3              case 6: //left
+ 180   3                SendString("left\r\n");
+ 181   3                Snake[0].direction = 2;
+ 182   3                break;
+ 183   3      
+ 184   3              case 7: //right
+ 185   3                SendString("right\r\n");
+ 186   3                Snake[0].direction = 1;
+ 187   3                break;
+ 188   3      
+ 189   3              case 8: //游戏开始(暂停)
+ 190   3                f_gameWait = ~f_gameWait;
+ 191   3                DelayMs(1000);   //防止程序误判点2下，可以改大点
+ 192   3                break;
+ 193   3                
+ 194   3              default:
+ 195   3                break;
+ 196   3            } where = 0;
+ 197   2        }
+ 198   1      } 
+ 199          
+ 200          
+ 201          void GamePlay()  /*贪吃蛇游戏*/
+ 202          {
+ 203   1        uint i;
+ 204   1        
+ 205   1        for(i = SnakeNode; i > 0; i--)  /*蛇的每个环节往前移动,也就是贪吃蛇 
+ 206   1                                                               的关键算法*/ /*Snake[SnakeNode]  用来去尾巴*/
+ 207   1        { 
+ 208   2          Snake[i].sx = Snake[i-1].sx; 
+ 209   2          Snake[i].sy = Snake[i-1].sy;
+ 210   2        } 
+ 211   1        
+ 212   1      
+ 213   1        if(food.yes == 1)  /*需要出现新食物*/ 
+ 214   1        { 
+ 215   2          food.fx = rand() % L + 1;    /*随机定义食物的横坐标*/ 
+ 216   2          food.fy = rand() % H + 111;  /*随机定义食物的纵坐标*/ 
+ 217   2      
+ 218   2          for(i = 0; i <= SnakeNode; i++)  /*新食物的坐标被蛇占用*/
+ 219   2          {
+ 220   3            if((Snake[i].sx == food.fx) && (Snake[i].sy == food.fy))
+ 221   3            {
+ 222   4              food.yes = 1;
+ 223   4              break;
+ 224   4            }
+ 225   3          }
+ 226   2          
+ 227   2          food.yes = 0;  /*画面上有食物了*/ 
+ 228   2        } 
+ 229   1        
+ 230   1        if(food.yes == 0)  /*画面上有食物了就要显示*/ 
+ 231   1        { 
+ 232   2          GUI_Dot(food.fx, food.fy, BLUE);  /*食物显示蓝色*/
+ 233   2        }
+ 234   1        #if 1
+ 235   1          SendString("食物坐标 : ");
+ 236   1          SendData(food.fx / 100 + 0x30);
+ 237   1          SendData(food.fx / 10 % 10 + 0x30);
+ 238   1          SendData(food.fx % 10 + 0x30);
+ 239   1          SendString("  ");
+ 240   1          SendData(food.fy / 100 + 0x30);
+C51 COMPILER V9.52.0.0   MAIN                                                              09/18/2016 19:33:14 PAGE 5   
+
+ 241   1          SendData(food.fy / 10 % 10 + 0x30);
+ 242   1          SendData(food.fy % 10 + 0x30);
+ 243   1          SendString("\r\n");
+ 244   1        #endif
+ 245   1      
+ 246   1      
+ 247   1      
+ 248   1        switch(Snake[0].direction)  /*1,2,3,4表示右,左,上,下四个方向,通过这个判断 
+ 249   1                                                        来移动蛇头*/ 
+ 250   1        { 
+ 251   2          case 1: Snake[0].sx += 1; break; /*右*/ 
+ 252   2          case 2: Snake[0].sx -= 1; break; /*左*/ 
+ 253   2          case 3: Snake[0].sy -= 1; break; /*上*/ 
+ 254   2          case 4: Snake[0].sy += 1; break; /*下*/ 
+ 255   2        }
+ 256   1        
+ 257   1        #if 0
+                  SendString("direction : ");
+                  SendData(Snake[0].direction + 0x30);
+                  SendString("\r\n");
+                #endif
+ 262   1       
+ 263   1      
+ 264   1        for(i = 0; i <= SnakeNode; i++)  /*屏幕显示*/
+ 265   1        {
+ 266   2          GUI_Dot(Snake[i].sx, Snake[i].sy, BLACK);
+ 267   2          if(i == SnakeNode)             /*去尾巴*/
+ 268   2            GUI_Dot(Snake[i].sx, Snake[i].sy, WHITE);
+ 269   2        }
+ 270   1        DelayMs(1000);                   /*蛇的移动速度*/
+ 271   1      
+ 272   1        
+ 273   1        if((Snake[0].sx == food.fx) && (Snake[0].sy == food.fy))  /*蛇吃到食物*/
+ 274   1        {
+ 275   2          SnakeNode++;
+ 276   2          food.yes = 1; 
+ 277   2        }
+ 278   1        
+ 279   1        ScoreDis();                /*显示成绩*/
+ 280   1      
+ 281   1      
+ 282   1      
+ 283   1        for(i = 1;i < SnakeNode; i++)  /*判断蛇是否撞到自己*/
+ 284   1        { 
+ 285   2          if(Snake[i].sx == Snake[0].sx && Snake[i].sy == Snake[0].sy)  /*蛇头是否撞到身体*/ 
+ 286   2          { 
+ 287   3            f_startGame = 0;
+ 288   3            GameOver();                /*本次游戏结束*/ 
+ 289   3            break; 
+ 290   3          } 
+ 291   2        } 
+ 292   1      
+ 293   1        if(Snake[0].sx <= 1 || Snake[0].sx >= 174 ||  /*判断蛇是否撞到墙壁*/
+ 294   1           Snake[0].sy <= 111 || Snake[0].sy >= 218)           
+ 295   1        { 
+ 296   2          f_startGame = 0;
+ 297   2          GameOver();                  /*本次游戏结束*/ 
+ 298   2        }
+ 299   1      }
+ 300          
+ 301          
+ 302          
+C51 COMPILER V9.52.0.0   MAIN                                                              09/18/2016 19:33:14 PAGE 6   
+
+ 303          void GameButton()  /*游戏界面的控制按钮(位于右上角)*/
+ 304          {
+ 305   1        float k = 1.25;
+ 306   1        float y1 = 0.0, y2 = 0.0;
+ 307   1        y1 = k * x - 110;
+ 308   1        y2 = -(k * x) + 220;
+ 309   1        if(x >= 88 && y <= 110 && page == 2) 
+ 310   1        {
+ 311   2          if(y < y1 && y < y2)
+ 312   2          {
+ 313   3            where = 4;
+ 314   3          }
+ 315   2          
+ 316   2          if(y < y1 && y > y2)
+ 317   2          {
+ 318   3            where = 7;
+ 319   3          }
+ 320   2          
+ 321   2          if(y > y1 && y > y2)
+ 322   2          {
+ 323   3            where = 5;
+ 324   3          }
+ 325   2          
+ 326   2          if(y > y1 && y < y2)
+ 327   2          {
+ 328   3            where = 6;
+ 329   3          }
+ 330   2        }
+ 331   1      }
+ 332          
+ 333          
+ 334          void SnakeDis()  /*开机显示*/
+ 335          {
+ 336   1        TFT_ClearScreen(WHITE);
+ 337   1        GUI_WriteASCII16x24(48, 0, "SNAKE", RED, WHITE);
+ 338   1        GUI_Line(13, 29, 163, 29, RED);
+ 339   1        GUI_ShowPicture(13, 40, 150, 150);        
+ 340   1        GUI_WriteASCII16x24(48, 140, "start", RED, WHITE);
+ 341   1        GUI_WriteASCII16x24(48, 170, "about", RED, WHITE);
+ 342   1      }
+ 343          
+ 344          void GameDis()  /*点击start   后显示(游戏界面)*/
+ 345          {
+ 346   1        TFT_ClearScreen(WHITE);
+ 347   1        
+ 348   1        GUI_Line(0, 55, 87, 55, RED);
+ 349   1        GUI_Line(87, 0, 87, 110, RED);
+ 350   1        
+ 351   1        GUI_WriteASCII16x24(0, 0, "score", BLACK, WHITE);
+ 352   1        GUI_WriteASCII16x24(12, 70, "STOP", MAGENTA, WHITE);
+ 353   1      
+ 354   1        GUI_Line(0, 110, 175, 110, RED);
+ 355   1        GUI_Line(0, 110, 0, 219, RED);
+ 356   1        GUI_Line(175, 110, 175, 219, RED);
+ 357   1        GUI_Line(0, 219, 175, 219, RED);
+ 358   1      
+ 359   1        GUI_Line(88, 110, 175, 0, GREEN);
+ 360   1        GUI_Line(88, 0, 175, 110, GREEN);
+ 361   1      
+ 362   1      }
+ 363          
+ 364          void AboutDis()  /*点击about   后显示(about界面)*/
+C51 COMPILER V9.52.0.0   MAIN                                                              09/18/2016 19:33:14 PAGE 7   
+
+ 365          {
+ 366   1        TFT_ClearScreen(WHITE); 
+ 367   1        GUI_WriteASCII16x24(48, 0, "ABOUT", BLACK, WHITE);  
+ 368   1        GUI_Line(13, 29, 163, 29, BLACK); 
+ 369   1        
+ 370   1        GUI_WriteASCII16x24(10, 34, "Author:", YELLOW, WHITE);
+ 371   1        GUI_WriteASCII16x24(10, 63, "   Jove   ", YELLOW, WHITE);
+ 372   1        GUI_WriteASCII16x24(10, 92, "Date:", YELLOW, WHITE);
+ 373   1        GUI_WriteASCII16x24(10, 121, "2016-09-18", YELLOW, WHITE);
+ 374   1      }
+ 375          
+ 376          void ScoreDis()  /*成绩显示*/
+ 377          {
+ 378   1        scorceValue[0] = (SnakeNode - 3) / 1000 + 0x30;
+ 379   1        scorceValue[1] = (SnakeNode - 3) / 100 % 10 + 0x30;
+ 380   1        scorceValue[2] = (SnakeNode - 3) / 10 % 10 + 0x30;
+ 381   1        scorceValue[3] = (SnakeNode - 3) % 10 + 0x30;
+ 382   1        
+ 383   1        #if 0
+                  SendString("SnakeNode : ");
+                  SendData((SnakeNode - 3) / 1000 + 0x30);
+                  SendData((SnakeNode - 3) / 100 % 10 + 0x30);
+                  SendData((SnakeNode - 3) / 10 % 10 + 0x30);   
+                  SendData((SnakeNode - 3) % 10 + 0x30);
+                  SendString("\r\n");
+                #endif
+ 391   1        
+ 392   1        GUI_WriteASCII16x24(12, 27, scorceValue, MAGENTA, WHITE);
+ 393   1      }
+ 394          
+ 395          void GameOver()      /*游戏结束*/
+ 396          {
+ 397   1        TFT_ClearScreen(WHITE);
+ 398   1        
+ 399   1        GUI_WriteASCII16x24(0, 0, "score", BLACK, WHITE);
+ 400   1        ScoreDis();
+ 401   1          
+ 402   1        GUI_WriteASCII16x24(56, 100, "Game", YELLOW, WHITE);
+ 403   1        GUI_WriteASCII16x24(56, 130, "Over", YELLOW, WHITE);
+ 404   1      }
+ 405          
+ 406          void DelayMs(uint a) {    //延时x ms
+ 407   1        uchar i;
+ 408   1        while( --a != 0) {    
+ 409   2          for(i = 0; i < 125; i++); 
+ 410   2        }             
+ 411   1      }
+ 412          
+ 413          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   3356    ----
+   CONSTANT SIZE    =    232    ----
+   XDATA SIZE       =    221      15
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      2    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,311 @@
+C51 COMPILER V9.52.0.0   GUI                                                               09/18/2016 19:33:14 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE GUI
+OBJECT MODULE PLACED IN gui.obj
+COMPILER INVOKED BY: D:\keil 5 MDK\C51\BIN\C51.EXE source\gui.c LARGE BROWSE DEBUG OBJECTEXTEND PRINT(.\gui.lst) TABS(2)
+                    - OBJECT(gui.obj)
+
+line level    source
+
+   1          #include "main.h"
+   2          #include "charcode.h"
+   3          
+   4          //---如果要显示图片就添加这个头文件---//
+   5          #ifdef PICTURE_SHOW
+   6          
+   7          #include "snakepicture.h"
+   8          
+   9          #endif
+  10          
+  11          /****************************************************************************
+  12          *函数名：GUI_Dot
+  13          *输  入：x,y, color
+  14          *输  出：
+  15          *功  能：给单个像素涂上颜色。
+  16          ****************************************************************************/   
+  17          
+  18          void GUI_Dot(uchar x, uint y, uint color)
+  19          {  
+  20   1        TFT_SetWindow(x, y, x, y);  //单个像素
+  21   1        TFT_WriteData(color);
+  22   1      }
+  23          
+  24          /****************************************************************************
+  25          *函数名：GUI_Box
+  26          *输  入： sx, sy, ex, ey, color
+  27          *输  出：
+  28          *功  能：给一个区域涂上颜色。
+  29          ****************************************************************************/   
+  30          //void GUI_Box(uchar sx, uint sy, uchar ex, uint ey, uint color)
+  31          //{ 
+  32          //  uint temp;   
+  33          //  TFT_SetWindow(sx, sy, ex, ey); 
+  34          //  sx = ex - sx + 1;
+  35          //  sy = ey - sy + 1;
+  36          //  while (sx--)
+  37          //  {
+  38          //    temp = sy;
+  39          //    while (temp--)
+  40          //    { 
+  41          //      TFT_WriteData(color);
+  42          //    }
+  43          //  }
+  44          //}
+  45          
+  46          /****************************************************************************
+  47          *函数名：GUI_Line 
+  48          *输  入：xStart,yStart,xEnd,yEnd,color
+  49          *输  出：
+  50          *功  能：画一条直线
+  51          ****************************************************************************/   
+  52          
+  53          void GUI_Line(uchar xStart, uint yStart, uchar xEnd, uint yEnd, uint color)
+  54          {
+C51 COMPILER V9.52.0.0   GUI                                                               09/18/2016 19:33:14 PAGE 2   
+
+  55   1        uint t;  
+  56   1        int xerr = 0, yerr = 0, delta_x, delta_y, distance;  
+  57   1        int incx, incy;  
+  58   1        uint row, col;  
+  59   1        delta_x = xEnd - xStart;//计算坐标增量  
+  60   1        delta_y = yEnd - yStart;  
+  61   1        col = xStart;  
+  62   1        row = yStart;  
+  63   1        if (delta_x > 0)
+  64   1        {
+  65   2          incx=1;//设置单步方向
+  66   2        }     
+  67   1        else    
+  68   1        {  
+  69   2            if (delta_x == 0)
+  70   2          {
+  71   3            incx = 0;//垂直线 
+  72   3          }      
+  73   2            else 
+  74   2            {
+  75   3              incx = -1;
+  76   3              delta_x = -delta_x;
+  77   3            }  
+  78   2        }  
+  79   1        if (delta_y > 0)
+  80   1        {
+  81   2          incy = 1;
+  82   2        }   
+  83   1        else  
+  84   1        {  
+  85   2            if (delta_y == 0)
+  86   2          {
+  87   3            incy = 0;//水平线  
+  88   3          } 
+  89   2            else 
+  90   2          {
+  91   3            incy = -1;
+  92   3            delta_y = -delta_y;
+  93   3          }  
+  94   2        }  
+  95   1        if (delta_x > delta_y)
+  96   1        { 
+  97   2          distance = delta_x;//选取基本增量坐标轴  
+  98   2        }
+  99   1        else
+ 100   1        {
+ 101   2          distance = delta_y; 
+ 102   2        }   
+ 103   1        for (t=0; t<=distance+1; t++)  
+ 104   1        {                                     //画线输出  
+ 105   2            GUI_Dot(col, row, color);
+ 106   2            xerr += delta_x;  
+ 107   2            yerr += delta_y;  
+ 108   2            if(xerr > distance)  
+ 109   2            {  
+ 110   3                xerr -= distance;  
+ 111   3                col += incx;  
+ 112   3            }  
+ 113   2            if(yerr > distance)  
+ 114   2            {  
+ 115   3                yerr -= distance;  
+ 116   3                row += incy;  
+C51 COMPILER V9.52.0.0   GUI                                                               09/18/2016 19:33:14 PAGE 3   
+
+ 117   3            }  
+ 118   2        }  
+ 119   1      }
+ 120          
+ 121          /****************************************************************************
+ 122          *函数名：GUI_WriteCnChar 
+ 123          *输  入：x,y,cn,wordColor,backColor
+ 124          *输  出：
+ 125          *功  能：写二号楷体汉字
+ 126          ****************************************************************************/   
+ 127          
+ 128          #ifdef CHAR32_SHOW
+              
+              void GUI_Write32CnChar(uint x, uint y, uchar *cn, uint wordColor, uint backColor)  
+              {  
+                uchar i, j, wordNum;
+                uint color;
+                while (*cn != '\0')
+                {
+                  TFT_SetWindow(x, y, x+31, y+28);
+                  for (wordNum=0; wordNum<20; wordNum++)
+                  { //wordNum扫描字库的字数
+                    if ((CnChar32x29[wordNum].Index[0]==*cn)
+                         &&(CnChar32x29[wordNum].Index[1]==*(cn+1)))
+                    {
+                      for(i=0; i<116; i++) 
+                      { //MSK的位数
+                        color=CnChar32x29[wordNum].Msk[i];
+                        for(j=0;j<8;j++) 
+                        {
+                          if((color&0x80)==0x80)
+                          {
+                            TFT_WriteData(wordColor);
+                          }             
+                          else
+                          {
+                            TFT_WriteData(backColor);
+                          } 
+                          color<<=1;
+                        }//for(j=0;j<8;j++)结束
+                      }    
+                    }
+                  } //for (wordNum=0; wordNum<20; wordNum++)结束  
+                  cn += 2;
+                  x += 32;
+                }
+              }
+              #endif
+ 165          
+ 166          /****************************************************************************
+ 167          *函数名：GUI_WriteEnChar 
+ 168          *输  入：x,y,cn,wordColor,backColor
+ 169          *输  出：
+ 170          *功  能：写四号字字母
+ 171          ****************************************************************************/   
+ 172          #ifdef CHAR14_SHOW
+              
+              void GUI_Write14CnChar(uint x,uint y,uchar *cn,uint wordColor,uint backColor)  
+              {  
+                uchar i, j, wordNum;
+                uint color;
+                while (*cn != '\0')
+C51 COMPILER V9.52.0.0   GUI                                                               09/18/2016 19:33:14 PAGE 4   
+
+                {
+                  TFT_SetWindow(x, y, x+23, y+18);
+                  for (wordNum=0; wordNum<20; wordNum++)
+                  { //wordNum扫描字库的字数
+                    if ((CnChar19x24[wordNum].Index[0]==*cn)
+                         &&(CnChar19x24[wordNum].Index[1]==*(cn+1)))
+                    {
+                      for(i=0; i<57; i++) 
+                      { //MSK的位数
+                        color=CnChar19x24[wordNum].Msk[i];
+                        for(j=0;j<8;j++) 
+                        {
+                          if((color&0x80)==0x80)
+                          {
+                            TFT_WriteData(wordColor);
+                          }             
+                          else
+                          {
+                            TFT_WriteData(backColor);
+                          } 
+                          color<<=1;
+                        }//for(j=0;j<8;j++)结束
+                      }    
+                    }
+                  } //for (wordNum=0; wordNum<20; wordNum++)结束  
+                  cn += 2;
+                  x += 24;
+                }
+              }
+              
+              
+              
+              
+              
+              #endif 
+ 214          /****************************************************************************
+ 215          *函数名：GUI_WriteASCII16X24 
+ 216          *输  入：x,y,en,wordColor,backColor, *p
+ 217          *输  出：
+ 218          *功  能：写16X24的ASCII字符
+ 219          ****************************************************************************/   
+ 220          
+ 221          #ifdef USE_ASCII16x24
+ 222          
+ 223          void GUI_WriteASCII16x24(uchar x, uchar y, uchar *p, uint wordColor, uint backColor)
+ 224          {
+ 225   1        uchar j, wordByte,wordNum;
+ 226   1        uint color;
+ 227   1        while(*p != '\0')
+ 228   1        {
+ 229   2          wordNum = *p - 32;
+ 230   2          TFT_SetWindow(x,y,x+15, y+23);
+ 231   2          for (wordByte=0; wordByte<48; wordByte++)
+ 232   2          {
+ 233   3            color = ASCII16x24[wordNum][wordByte];
+ 234   3            for (j=0; j<8; j++) 
+ 235   3            {
+ 236   4              if ((color&0x80) == 0x80)
+ 237   4              {
+ 238   5                TFT_WriteData(wordColor);
+ 239   5              }             
+ 240   4              else
+C51 COMPILER V9.52.0.0   GUI                                                               09/18/2016 19:33:14 PAGE 5   
+
+ 241   4              {
+ 242   5                TFT_WriteData(backColor);
+ 243   5              }   
+ 244   4              color <<= 1;
+ 245   4            }
+ 246   3          }
+ 247   2          p++;
+ 248   2          x +=16;
+ 249   2        }
+ 250   1      }
+ 251          #endif
+ 252          
+ 253          
+ 254          /****************************************************************************
+ 255          *函数名：GUI_ShowPicture 
+ 256          *输  入：x,y,wide,high
+ 257          *输  出：
+ 258          *功  能：画一幅图
+ 259          ****************************************************************************/   
+ 260          #ifdef PICTURE_SHOW
+ 261          
+ 262          void GUI_ShowPicture(uchar x, uint y, uchar wide, uint high)
+ 263          {
+ 264   1        uint temp = 0, tmp = 0, num = 0;
+ 265   1        TFT_SetWindow(x, y, x+wide-1, y+high-1);
+ 266   1        num = wide * high * 2;
+ 267   1        do
+ 268   1        {  
+ 269   2          temp = gImage_snakepicture[tmp + 1];
+ 270   2          temp = temp << 8;
+ 271   2          temp = temp | gImage_snakepicture[tmp];
+ 272   2          TFT_WriteData(temp);//逐点显示
+ 273   2          tmp += 2;
+ 274   2        }
+ 275   1        while(tmp < num); 
+ 276   1      }
+ 277          
+ 278          #endif
+ 279          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    915    ----
+   CONSTANT SIZE    =  49608    ----
+   XDATA SIZE       =   ----      58
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

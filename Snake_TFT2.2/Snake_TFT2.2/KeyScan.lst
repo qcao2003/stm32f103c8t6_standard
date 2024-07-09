@@ -1,0 +1,76 @@
+C51 COMPILER V9.52.0.0   KEYSCAN                                                           09/11/2016 10:43:20 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE KEYSCAN
+OBJECT MODULE PLACED IN KeyScan.obj
+COMPILER INVOKED BY: D:\keil 5 MDK\C51\BIN\C51.EXE source\KeyScan.c BROWSE DEBUG OBJECTEXTEND PRINT(.\KeyScan.lst) TABS(
+                    -2) OBJECT(KeyScan.obj)
+
+line level    source
+
+   1          //***********************************************
+   2          // 前缀部分定义说明 : 
+   3          // 常量定义前缀   : C_
+   4          // I/O口定义前缀  : p_      
+   5          // 寄存器定义前缀 : d_        
+   6          // 标志位定义前缀 : f_  (flag)
+   7          // 数组定义前缀   : a_  (array)
+   8          //***********************************************
+   9          
+  10          /*******包含的头文件****/
+  11          #include "main.h"
+  12          
+  13          /*******包含的变量******/
+  14          
+  15          
+  16          
+  17          
+  18          void DelayMs(uint a) {  //延时 x ms
+  19   1        uchar i;
+  20   1        while( --a != 0) {    
+  21   2          for(i = 0; i < 125; i++); 
+  22   2        }             
+  23   1      }
+  24          
+  25          
+  26          /*******************************************************************************
+  27          * 函 数 名         : Key_Scan()
+  28          * 函数功能       : 扫描键盘
+  29          * 输    入         : 无
+  30          * 输    出         : 读取到的键值
+  31          *******************************************************************************/
+  32          
+  33          u16 KeyScan()
+  34          {
+  35   1        uchar KeyValue; 
+  36   1      
+  37   1        //--检测按键--//
+  38   1        if (GPIO_KEY != 0xFF)   //检测按键是否按下
+  39   1        {
+  40   2          DelayMs(10);  //消除抖动
+  41   2      
+  42   2          if (GPIO_KEY != 0xFF) //再次检测按键是否按下
+  43   2          {
+  44   3            KeyValue = GPIO_KEY;
+  45   3            
+  46   3            while (GPIO_KEY != 0xFF);  //等待按键松开
+  47   3          }
+  48   2        }
+  49   1        return KeyValue;
+  50   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     50    ----
+C51 COMPILER V9.52.0.0   KEYSCAN                                                           09/11/2016 10:43:20 PAGE 2   
+
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,7 @@
+"main.obj",
+"lcd_driver.obj",
+"gui.obj",
+"Uart.obj",
+"touch.obj" 
+TO "Snake" 
+RAMSIZE(256) 

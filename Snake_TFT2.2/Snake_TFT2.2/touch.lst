@@ -1,0 +1,373 @@
+C51 COMPILER V9.52.0.0   TOUCH                                                             09/18/2016 19:33:15 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE TOUCH
+OBJECT MODULE PLACED IN touch.obj
+COMPILER INVOKED BY: D:\keil 5 MDK\C51\BIN\C51.EXE source\touch.c LARGE BROWSE DEBUG OBJECTEXTEND PRINT(.\touch.lst) TAB
+                    -S(2) OBJECT(touch.obj)
+
+line level    source
+
+   1          #include"main.h"
+   2          
+   3          PosTypeDef TouchAdj; //定义一阵数据用来保存校正因数
+   4          XPT_XY xpt_xy;       //定义一个全局变量保存X、Y的值
+   5          #define XY_READ_TIMS  10       //读取的次数
+   6          
+   7          /****************************************************************************
+   8          *函数名：TOUCH_SPI_Start
+   9          *输  入：无
+  10          *输  出：无
+  11          *功  能：初始化触摸SPI
+  12          ****************************************************************************/
+  13          
+  14          void TOUCH_SPI_Start(void)
+  15          {
+  16   1        TOUCH_CLK = 0;
+  17   1        TOUCH_CS  = 1;
+  18   1        TOUCH_DIN = 1;
+  19   1        TOUCH_CLK = 1;
+  20   1        TOUCH_CS  = 0;    
+  21   1      }
+  22          
+  23          /****************************************************************************
+  24          *函数名：TOUCH_SPI_Write
+  25          *输  入：dat：写入数据
+  26          *输  出：无
+  27          *功  能：使用SPI写入数据
+  28          ****************************************************************************/
+  29          
+  30          void TOUCH_SPI_Write(uchar dat)
+  31          {
+  32   1        uchar i;
+  33   1        TOUCH_CLK = 0;
+  34   1        for(i=0; i<8; i++)
+  35   1        {
+  36   2          TOUCH_DIN = dat >> 7;   //放置最高位
+  37   2          dat <<= 1;
+  38   2          TOUCH_CLK = 0;      //上升沿放置数据
+  39   2      
+  40   2          TOUCH_CLK = 1;
+  41   2      
+  42   2        }
+  43   1      }
+  44          
+  45          /****************************************************************************
+  46          *函数名：TOUCH_SPI_Read
+  47          *输  入：无
+  48          *输  出：dat：读取 到的数据
+  49          *功  能：使用SPI读取数据
+  50          ****************************************************************************/
+  51          
+  52          uint TOUCH_SPI_Read(void)
+  53          {
+  54   1        uint i, dat=0;
+C51 COMPILER V9.52.0.0   TOUCH                                                             09/18/2016 19:33:15 PAGE 2   
+
+  55   1        TOUCH_CLK = 0;
+  56   1        for(i=0; i<12; i++)   //接收12位数据
+  57   1        {
+  58   2          dat <<= 1;
+  59   2      
+  60   2          TOUCH_CLK = 1;
+  61   2          TOUCH_CLK = 0;
+  62   2      
+  63   2          dat |= TOUCH_DOUT;
+  64   2      
+  65   2        }
+  66   1        return dat; 
+  67   1      }
+  68          
+  69          /****************************************************************************
+  70          *函数名：TOUCH_XPT_ReadData
+  71          *输  入：cmd：读取的X或者Y
+  72          *输  出：endValue：最终信号处理后返回的值
+  73          *功  能：读取触摸数据
+  74          ****************************************************************************/
+  75          
+  76          uint TOUCH_XPT_ReadData(uchar cmd)
+  77          {
+  78   1        uchar i, j;
+  79   1        uint readValue[XY_READ_TIMS];
+  80   1        long endValue;
+  81   1      
+  82   1        TOUCH_CLK = 0;    //先拉低时间
+  83   1        TOUCH_CS  = 0;    //选中芯片
+  84   1        
+  85   1        for(i=0; i<XY_READ_TIMS; i++)   //读取XY_READ_TIMS次结果
+  86   1        { 
+  87   2          TOUCH_SPI_Write(cmd);  //发送转换命令
+  88   2          //Delay_6us();
+  89   2          for(j=6; j>0; j--);   //延时等待转换结果
+  90   2          TOUCH_CLK = 1;    //发送一个时钟周期，清除BUSY
+  91   2          _nop_();
+  92   2          _nop_();
+  93   2          TOUCH_CLK = 0;
+  94   2          _nop_();
+  95   2          _nop_();
+  96   2        
+  97   2          readValue[i] = TOUCH_SPI_Read();
+  98   2        }
+  99   1        TOUCH_CS = 1; //释放片选
+ 100   1      
+ 101   1        //---软件滤波---//
+ 102   1        //---先大到小排序，除去最高值，除去最低值，求其平均值---//
+ 103   1          for(i=0; i<XY_READ_TIMS - 1; i++) //从大到小排序
+ 104   1        {
+ 105   2          for(j= i+1; j<XY_READ_TIMS; j++)
+ 106   2          {
+ 107   3            if(readValue[i] < readValue[j])
+ 108   3            {
+ 109   4              endValue = readValue[i];
+ 110   4              readValue[i] = readValue[j];
+ 111   4              readValue[j] = endValue;
+ 112   4            }  
+ 113   3          }
+ 114   2        }
+ 115   1      //  if((readValue[2] - readValue[3]) > 5)
+ 116   1      //  {
+C51 COMPILER V9.52.0.0   TOUCH                                                             09/18/2016 19:33:15 PAGE 3   
+
+ 117   1      //    return 0;
+ 118   1      //  }
+ 119   1        endValue = 0;
+ 120   1        for(i=2; i<XY_READ_TIMS-2; i++)      
+ 121   1        {
+ 122   2          endValue += readValue[i]; 
+ 123   2        }
+ 124   1        endValue = endValue/ (XY_READ_TIMS - 4);//求平均值
+ 125   1      
+ 126   1        return endValue;
+ 127   1      }
+ 128          
+ 129          /****************************************************************************
+ 130          *函数名：TOUCH_XPT_ReadXY
+ 131          *输  入：无
+ 132          *输  出：1：成功 0：失败
+ 133          *功  能：读取XY的AD值
+ 134          ****************************************************************************/
+ 135          
+ 136          uchar TOUCH_XPT_ReadXY(void)
+ 137          { 
+ 138   1        uint x1, x2, x, y1, y2, y;
+ 139   1      
+ 140   1        TOUCH_SPI_Start();
+ 141   1        //---分别读两次X值和Y值, 交叉着读可以提高一些读取精度---//
+ 142   1        x1 = TOUCH_XPT_ReadData(XPT_CMD_X);
+ 143   1        y1 = TOUCH_XPT_ReadData(XPT_CMD_Y);
+ 144   1        x2 = TOUCH_XPT_ReadData(XPT_CMD_X);
+ 145   1        y2 = TOUCH_XPT_ReadData(XPT_CMD_Y);
+ 146   1      
+ 147   1        //---求取X值的差值---//
+ 148   1        if (x1 > x2)
+ 149   1        {
+ 150   2          x = x1 - x2;
+ 151   2        }
+ 152   1        else
+ 153   1        {
+ 154   2          x = x2 - x1;
+ 155   2        }
+ 156   1      
+ 157   1        //---求取Y值的差值---//
+ 158   1        if (y1 > y2)
+ 159   1        {
+ 160   2          y = y1 - y2;
+ 161   2        }
+ 162   1        else
+ 163   1        {
+ 164   2          y = y2 - y1;
+ 165   2        }
+ 166   1      
+ 167   1        //---判断差值是否大于50，大于就返回0，表示读取失败---//
+ 168   1        if((x > 50) || (y > 50))  
+ 169   1        {
+ 170   2          return 0;
+ 171   2        }
+ 172   1      
+ 173   1        //---求取两次读取值的平均数作为读取到的XY值---//
+ 174   1        xpt_xy.x = (x1 + x2) / 2;
+ 175   1        xpt_xy.y = (y1 + y2) / 2;
+ 176   1      
+ 177   1        xpt_xy.x &= 0xFFF0;   //去掉低四位
+ 178   1        xpt_xy.y &= 0xFFF0;
+C51 COMPILER V9.52.0.0   TOUCH                                                             09/18/2016 19:33:15 PAGE 4   
+
+ 179   1      
+ 180   1        //---确定XY值的范围，用在触摸屏大于TFT时---//
+ 181   1        if((xpt_xy.x < 100) || (xpt_xy.y > 3600))
+ 182   1        {
+ 183   2          return 0;
+ 184   2        }
+ 185   1      
+ 186   1        return 1;  // 返回1，表示读取成功
+ 187   1      }
+ 188          
+ 189          
+ 190          /****************************************************************************
+ 191          *函数名：TOUCH_ReadAdj
+ 192          *输  入：px：读取到的X坐标值
+ 193          *      *           py：读取到的Y坐标值
+ 194          *输  出：无
+ 195          *功  能：给屏幕校正函数取四个点
+ 196          ****************************************************************************/   
+ 197          #if LCD_TOUCH_TYPE == 0
+              
+              void TOUCH_ReadAdj(uint *px, uint *py)
+              {
+                  ulong i = 0;
+                  XPT_XY pot[4];
+              
+                  /* 读取四个定位点的坐标 */
+                  TFT_ClearScreen(0x0000);
+                  GUI_DrowSign(LCD_ADJX_MIN, LCD_ADJY_MIN, 0x0FF0);
+                  while(1)
+                  {
+                      if(TOUCH_XPT_ReadXY())
+                      {
+                          i++;
+                          if(i > 10)
+                          {
+                              pot[0].x = xpt_xy.x;
+                              pot[0].y = xpt_xy.y;
+                              break;
+                          }
+                      }   
+                  }
+                  GUI_DrowSign(LCD_ADJX_MIN, LCD_ADJY_MIN, 0x0000);
+                  ADJ_CHECK_DELAY;
+                  GUI_DrowSign(LCD_ADJX_MIN, LCD_ADJY_MAX, 0x0FF0);
+                  i = 0;
+                  while(1)
+                  {
+                      if(TOUCH_XPT_ReadXY())
+                      {
+                          i++;
+                          if(i > 10)
+                          {
+                              pot[1].x = xpt_xy.x;
+                              pot[1].y = xpt_xy.y;
+                              break;
+                          }
+                      }   
+                  }
+                  GUI_DrowSign(LCD_ADJX_MIN, LCD_ADJY_MAX, 0x0000);
+                  ADJ_CHECK_DELAY;
+                  GUI_DrowSign(LCD_ADJX_MAX, LCD_ADJY_MIN, 0x0FF0);
+                  i = 0;
+C51 COMPILER V9.52.0.0   TOUCH                                                             09/18/2016 19:33:15 PAGE 5   
+
+                  while(1)
+                  {
+                      if(TOUCH_XPT_ReadXY())
+                      {
+                          i++;
+                          if(i > 10)
+                          {
+                              pot[2].x = xpt_xy.x;
+                              pot[2].y = xpt_xy.y;
+                              break;
+                          }
+                      }   
+                  }
+                  GUI_DrowSign(LCD_ADJX_MAX, LCD_ADJY_MIN, 0x0000);
+                  ADJ_CHECK_DELAY;
+                  GUI_DrowSign(LCD_ADJX_MAX, LCD_ADJY_MAX, 0x0FF0);
+                  i = 0;
+                  while(1)
+                  {
+                      if(TOUCH_XPT_ReadXY())
+                      {
+                          i++;
+                          if(i > 10)
+                          {
+                              pot[3].x = xpt_xy.x;
+                              pot[3].y = xpt_xy.y;
+                              break;
+                          }
+                      }   
+                  }      
+                  GUI_DrowSign(LCD_ADJX_MAX, LCD_ADJY_MAX, 0x0000);
+              
+                  /* 处理读取到的四个点的数据，整合成对角的两个点 */
+              
+                  px[0] = (pot[0].x + pot[1].x) / 2;
+                  py[0] = (pot[0].y + pot[2].y) / 2;
+                  px[1] = (pot[3].x + pot[2].x) / 2;
+                  py[1] = (pot[3].y + pot[1].y) / 2;
+              }
+              
+              #endif
+ 282          
+ 283          /****************************************************************************
+ 284          *函数名：TOUCH_Adjust
+ 285          *输  入：无
+ 286          *输  出：无
+ 287          *功  能：触摸屏校正
+ 288          ****************************************************************************/   
+ 289           
+ 290          void TOUCH_Adjust(void)
+ 291          {
+ 292   1          uint px[2], py[2];
+ 293   1          float xFactor, yFactor;
+ 294   1          
+ 295   1          /* 定位取点 */
+ 296   1      #if LCD_TOUCH_TYPE == 0
+                  TOUCH_ReadAdj(px, py);
+              #else
+ 299   1      
+ 300   1        /* 将(10,10)和（TFT_XMAX - 10, TFT_YMAX - 10） 的坐标填上就不用每次开机都要校正了*/
+ 301   1        px[0] = 480;
+ 302   1          py[0] = 368;
+C51 COMPILER V9.52.0.0   TOUCH                                                             09/18/2016 19:33:15 PAGE 6   
+
+ 303   1          px[1] = 3660;
+ 304   1          py[1] = 3360;
+ 305   1        
+ 306   1      #endif  
+ 307   1      
+ 308   1      #if LCD_TOUCH_TYPE == 0
+                  /* 求出比例因数 */
+                  xFactor = (float)LCD_ADJx / (px[0] - px[1]);
+                  yFactor = (float)LCD_ADJy / (py[0] - py[1]);  
+                  
+                  /* 求出偏移量 */
+                  TouchAdj.xOffset = (int)LCD_ADJX_MAX - ((float)px[0] * xFactor + 0.5);
+                  TouchAdj.yOffset = (int)LCD_ADJY_MAX - ((float)py[0] * yFactor + 0.5);
+              
+                  /* 将比例因数进行数据处理，然后保存 */
+                  TouchAdj.xFactor = xFactor * LCD_ADJ_MUX;
+                  TouchAdj.yFactor = yFactor * LCD_ADJ_MUX;
+              #endif
+ 321   1      
+ 322   1      #if LCD_TOUCH_TYPE == 1  
+ 323   1        
+ 324   1          /* 求出比例因数 */
+ 325   1          xFactor = (float)LCD_ADJx / (px[1] - px[0]);
+ 326   1          yFactor = (float)LCD_ADJy / (py[1] - py[0]);
+ 327   1      
+ 328   1          /* 求出偏移量 */
+ 329   1          TouchAdj.xOffset = (int)LCD_ADJX_MAX - ((float)px[1] * xFactor + 0.5);
+ 330   1          TouchAdj.yOffset = (int)LCD_ADJY_MAX - ((float)py[1] * yFactor + 0.5);
+ 331   1      
+ 332   1          /* 将比例因数进行数据处理，然后保存 */
+ 333   1          TouchAdj.xFactor = xFactor * LCD_ADJ_MUX;
+ 334   1          TouchAdj.yFactor = yFactor * LCD_ADJ_MUX;
+ 335   1      
+ 336   1      #endif
+ 337   1      }
+ 338          
+ 339          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1054    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =     16      54
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

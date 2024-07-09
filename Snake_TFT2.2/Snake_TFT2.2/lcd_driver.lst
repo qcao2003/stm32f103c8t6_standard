@@ -1,0 +1,211 @@
+C51 COMPILER V9.52.0.0   LCD_DRIVER                                                        09/18/2016 19:33:14 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE LCD_DRIVER
+OBJECT MODULE PLACED IN lcd_driver.obj
+COMPILER INVOKED BY: D:\keil 5 MDK\C51\BIN\C51.EXE source\lcd_driver.c LARGE BROWSE DEBUG OBJECTEXTEND PRINT(.\lcd_drive
+                    -r.lst) TABS(2) OBJECT(lcd_driver.obj)
+
+line level    source
+
+   1          #include "main.h"
+   2          
+   3          
+   4          /****************************************************************************
+   5          *函数名：TFT_WriteCmd
+   6          *输  入：cmd
+   7          *输  出：
+   8          *功  能：写命令。
+   9          ****************************************************************************/   
+  10          
+  11          void TFT_WriteCmd(uint cmd)
+  12          {
+  13   1        uchar cmdH, cmdL;
+  14   1        cmdH = cmd >> 8;
+  15   1        cmdL = cmd & 0x00FF;
+  16   1      
+  17   1        TFT_WR = 1;       //初始化WR
+  18   1        TFT_CS = 0;       //打开片选
+  19   1        
+  20   1        TFT_RD = 1;           //选择写
+  21   1        TFT_RS = 0;       //选择命令
+  22   1          
+  23   1        TFT_DATAPORTH = cmdH; //放置命令数据
+  24   1        TFT_DATAPORTL = cmdL; //放置命令数据
+  25   1      
+  26   1        TFT_WR = 0;       //写入时序
+  27   1        TFT_WR = 1;
+  28   1        
+  29   1        TFT_CS = 1;       //关闭片选
+  30   1      }
+  31          
+  32          /****************************************************************************
+  33          *函数名：TFT_WriteCmdData
+  34          *输  入：cmd, dat
+  35          *输  出：
+  36          *功  能：写命令， 写数据。
+  37          ****************************************************************************/   
+  38          
+  39          void TFT_WriteData(uint dat)
+  40          {
+  41   1          uchar datH, datL;
+  42   1        datH = dat >> 8;
+  43   1        datL = dat & 0x00FF;
+  44   1      
+  45   1        TFT_WR = 1;       //初始化WR
+  46   1        TFT_CS = 0;       //打开片选
+  47   1        
+  48   1        TFT_RD = 1;           //选择写
+  49   1        TFT_RS = 1;       //选择发送数据
+  50   1          
+  51   1        TFT_DATAPORTH = datH;  //放置命令数据
+  52   1        TFT_DATAPORTL = datL;  //放置命令数据
+  53   1      
+  54   1        TFT_WR = 0;       //写入时序
+C51 COMPILER V9.52.0.0   LCD_DRIVER                                                        09/18/2016 19:33:14 PAGE 2   
+
+  55   1        TFT_WR = 1;
+  56   1        
+  57   1        TFT_CS = 1;       //关闭片选
+  58   1      }
+  59          
+  60          /****************************************************************************
+  61          *函数名：TFT_Init
+  62          *输  入：
+  63          *输  出：
+  64          *功  能：初始化TFT。
+  65          ****************************************************************************/   
+  66          
+  67          void TFT_Init(void)
+  68          {
+  69   1        uint i;
+  70   1      
+  71   1        TFT_RST = 1;
+  72   1        for(i=500; i>0; i--);
+  73   1        TFT_RST = 0;
+  74   1        for(i=500; i>0; i--);
+  75   1        TFT_RST = 1;
+  76   1        for(i=5000; i>0; i--);
+  77   1        
+  78   1        TFT_CS = 0;
+  79   1        TFT_WriteCmd(0x11);
+  80   1      
+  81   1        TFT_WriteCmd(0xc5);
+  82   1        TFT_WriteData(0xc5);
+  83   1      
+  84   1        TFT_WriteCmd(0xf0);
+  85   1        TFT_WriteData(0x5a);
+  86   1      
+  87   1        TFT_WriteCmd(0xf2);
+  88   1        TFT_WriteData(0x01);
+  89   1      
+  90   1        TFT_WriteCmd(0xe0);
+  91   1        TFT_WriteData(0x00);
+  92   1        TFT_WriteData(0x01);
+  93   1        TFT_WriteData(0x06);
+  94   1        TFT_WriteData(0x2e);
+  95   1        TFT_WriteData(0x2b);
+  96   1        TFT_WriteData(0x0b);
+  97   1        TFT_WriteData(0x1a);
+  98   1        TFT_WriteData(0x02);
+  99   1        TFT_WriteData(0x06);
+ 100   1        TFT_WriteData(0x05);
+ 101   1        TFT_WriteData(0x0c);
+ 102   1        TFT_WriteData(0x0d);
+ 103   1        TFT_WriteData(0x00);
+ 104   1        TFT_WriteData(0x05);
+ 105   1        TFT_WriteData(0x02);
+ 106   1        TFT_WriteData(0x05);
+ 107   1      
+ 108   1        TFT_WriteCmd(0xe1);
+ 109   1        TFT_WriteData(0x06);
+ 110   1        TFT_WriteData(0x23);
+ 111   1        TFT_WriteData(0x25);
+ 112   1        TFT_WriteData(0x0f);
+ 113   1        TFT_WriteData(0x0a);
+ 114   1        TFT_WriteData(0x04);
+ 115   1        TFT_WriteData(0x02);
+ 116   1        TFT_WriteData(0x1a);
+C51 COMPILER V9.52.0.0   LCD_DRIVER                                                        09/18/2016 19:33:14 PAGE 3   
+
+ 117   1        TFT_WriteData(0x05);
+ 118   1        TFT_WriteData(0x03);
+ 119   1        TFT_WriteData(0x06);
+ 120   1        TFT_WriteData(0x01);
+ 121   1        TFT_WriteData(0x0c);
+ 122   1        TFT_WriteData(0x0b);
+ 123   1        TFT_WriteData(0x05);
+ 124   1        TFT_WriteData(0x05);
+ 125   1      
+ 126   1        TFT_WriteCmd(0x3a);
+ 127   1        TFT_WriteData(0x05);
+ 128   1      
+ 129   1          TFT_WriteCmd(0x36);
+ 130   1          TFT_WriteData(0xC8);
+ 131   1      
+ 132   1        TFT_WriteCmd(0x29);
+ 133   1      }
+ 134          
+ 135          /****************************************************************************
+ 136          *函数名：TFT_SetWindow
+ 137          *输  入：xStart, yStart, xEnd, yEnd
+ 138          *输  出：
+ 139          *功  能：设置要操作的窗口。
+ 140          ****************************************************************************/   
+ 141          
+ 142          void TFT_SetWindow(uchar xStart, uchar yStart, uchar xEnd, uchar yEnd)
+ 143          {
+ 144   1          TFT_WriteCmd(0x2A);
+ 145   1          TFT_WriteData(0x00);
+ 146   1          TFT_WriteData(xStart);
+ 147   1          TFT_WriteData(0x00);
+ 148   1          TFT_WriteData(xEnd);
+ 149   1      
+ 150   1          TFT_WriteCmd(0x2b);
+ 151   1          TFT_WriteData(0x00);
+ 152   1          TFT_WriteData(yStart);
+ 153   1          TFT_WriteData(0x00);
+ 154   1          TFT_WriteData(yEnd);
+ 155   1          
+ 156   1          TFT_WriteCmd(0x2c); 
+ 157   1      }
+ 158          
+ 159          
+ 160          /****************************************************************************
+ 161          *函数名：GUI_Clearcreen
+ 162          *输  入：backColor
+ 163          *输  出：
+ 164          *功  能：清屏并涂上颜色。
+ 165          ****************************************************************************/
+ 166              
+ 167          void TFT_ClearScreen(uint color)
+ 168          {
+ 169   1          uint i, j;
+ 170   1      
+ 171   1        TFT_SetWindow(0, 0, TFT_XMAX, TFT_YMAX);   //作用区域
+ 172   1          for(i=0; i<=TFT_XMAX; i++)
+ 173   1        {
+ 174   2          for (j=0; j<=TFT_YMAX; j++)
+ 175   2          {
+ 176   3            TFT_WriteData(color);
+ 177   3          }
+ 178   2        }
+C51 COMPILER V9.52.0.0   LCD_DRIVER                                                        09/18/2016 19:33:14 PAGE 4   
+
+ 179   1      }
+ 180          
+ 181          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    547    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----       8
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
